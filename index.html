@@ -45,8 +45,12 @@ h1{margin:2px 0 0;font-size:28px;letter-spacing:-.03em;line-height:1.1}
 .suggest button{display:block;width:100%;text-align:left;background:transparent;border:0;border-radius:8px;padding:8px 10px;color:var(--ink)}
 .suggest button:hover,.suggest button:focus{background:#1b3d6e}
 .suggest small{display:block;color:var(--muted)}
-.status{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0;padding:10px 12px;border:1px solid #3d5c8a;background:#132c58;border-radius:12px;color:#d7e6f8}
+.status{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0 8px;padding:10px 12px;border:1px solid #3d5c8a;background:#132c58;border-radius:12px;color:#d7e6f8}
 .status.live{border-color:#1f8a68;background:#0e3b32;color:#e5fff4}
+.refreshbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}
+.refreshbar .btn{flex:none}
+.refreshline{flex:1 1 220px;min-width:0;color:#d5e4f8;font-size:13.5px}
+.refreshline.bad{color:#ffc9cf}
 .dot{width:9px;height:9px;border-radius:99px;background:var(--gold);flex:none}
 .status.live .dot{background:var(--green)}
 .status strong{letter-spacing:.03em}
@@ -203,6 +207,10 @@ body[data-view="tile"] .tiles,body[data-view="race"] .tiles,body[data-view="nora
   <div class="suggest" id="suggest" hidden></div>
 </div>
 <div class="status" id="status"><span class="dot"></span><strong id="statushead">PRE-ELECTION · AWAITING RESULTS</strong><span id="statustext"></span><span class="sp"></span><span class="countdown" id="countdown"></span></div>
+<div class="refreshbar">
+  <button class="btn primary" id="refresh" type="button">Refresh</button>
+  <span class="refreshline" id="refreshline" role="status">Auto-refresh on · every 60 seconds</span>
+</div>
 
 <div class="tiles" id="tileboard">
   <div class="tile house" data-go="#house" role="button" tabindex="0" aria-label="Open U.S. House">
@@ -291,7 +299,7 @@ body[data-view="tile"] .tiles,body[data-view="race"] .tiles,body[data-view="nora
 
 <div class="modalback" id="modal"><div class="modal" role="dialog" aria-labelledby="feedtitle">
   <h3 id="feedtitle">Live data feed</h3>
-  <p>Poll an HTTPS URL that returns JSON (an array of records, or <code>{"results":[…]}</code>) or CSV with columns <code>race_id,candidate,party,votes,called,source,updated_at</code>. The server must allow CORS. Records need an HTTPS source and an ISO timestamp with a timezone. When this page is served over http(s) beside <code>results.json</code>, that file is re-read every 60 seconds.</p>
+  <p>This page already re-reads <code>results.json</code> every 60 seconds. Use a feed only for a different address. Both keep running together. The feed must be HTTPS and allow CORS. Each row needs <code>race_id,candidate,party,votes,called,source,updated_at</code>. Counts are kept only with an HTTPS source and a timestamp. A race is called only when <code>called</code> is set and that source is present.</p>
   <input class="search" id="feedurl" placeholder="https://example.org/results.json" aria-label="Feed URL">
   <select class="sel" id="feedint" aria-label="Poll interval"><option value="60">Every 1 min</option><option value="120">Every 2 min</option><option value="300" selected>Every 5 min</option></select>
   <div class="row">
@@ -371,7 +379,7 @@ function applyRecords(data,origin){
   }
   if(!used)throw Error('No valid records ('+Object.entries(reasons).map(([k,v])=>v+' '+k).join(', ')+')');
   for(const [id,c] of Object.entries(fresh)){if(!c.reduce((a,x)=>a+x.votes,0)){skip('race totals all zero');continue}const at=c.map(x=>x.updated_at).sort().pop();local.results[id]={candidates:c,updated_at:at,source:c[0].source,origin}}
-  Object.assign(local.calls,calls);local.at=new Date().toISOString();local.origin=origin;saveLocal();render();
+  Object.assign(local.calls,calls);local.at=new Date().toISOString();local.origin=origin;saveLocal();render({keep:true});
   toast(`${used} records loaded from ${origin}; ${skipped} skipped${skipped?' ('+Object.entries(reasons).map(([k,v])=>v+' '+k).join(', ')+')':''}`);
 }
 
@@ -642,7 +650,10 @@ function renderStatus(){
   const ds=[`<li>Race scaffold built ${esc(ct(DATA.scaffold.built_at))}</li>`,`<li>Results last updated: ${last?esc(ct(last)):'never (pre-election)'}</li>`,`<li>${Object.keys(DATA.results||{}).length} embedded result races · ${Object.keys(DATA.calls||{}).length} embedded calls</li>`];
   if(local.at)ds.push(`<li>Local import in this browser: ${Object.keys(local.results).length} races, ${Object.keys(local.calls).length} calls · ${esc(local.origin)} · ${esc(ct(local.at))}</li>`);
   if(feed.url&&tick)ds.push(`<li>Polling ${esc(feed.url)} every ${feed.interval}s</li>`);
-  if(location.protocol.startsWith('http'))ds.push('<li>Automatic re-read of results.json: every 60 seconds</li>');
+  if(autoOn)ds.push(`<li>Auto-refresh of results.json: on, every ${Math.round(refreshMs/1000)} second${Math.round(refreshMs/1000)===1?'':'s'}</li>`);
+  else ds.push('<li>Auto-refresh of results.json: off until this page is opened from the website</li>');
+  if(lastRefreshAt)ds.push(`<li>Last refresh ${esc(ctSec(lastRefreshAt))}</li>`);
+  if(refreshError)ds.push(`<li>Last refresh error: ${esc(refreshError)}. Data already on screen was kept.</li>`);
   $('datastatus').innerHTML=ds.join('');
   const pages=Object.values(DATA.scaffold.pages||{});
   $('scaffoldsrc').innerHTML=pages.map(p=>`<li><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title)}</a>${p.revid?' · rev '+p.revid:''}</li>`).join('')+
@@ -655,6 +666,112 @@ function renderStatus(){
   $('feedlog').innerHTML=log.length?log.map(e=>`${esc(ct(e.at))} · ${e.ok?'OK ':'ERR'} · ${esc(e.source)} · ${esc(e.message||'')}`).join('<br>'):'No feed activity yet.';
 }
 function renderClock(){$('clock').textContent=new Date().toLocaleString('en-US',{timeZone:TZ,weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})+' · Central Time'}
+const ctSec=iso=>{if(!iso)return '—';const d=new Date(iso);if(isNaN(d))return '—';return d.toLocaleString('en-US',{timeZone:TZ,month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit',timeZoneName:'short'})};
+let refreshMs=60000,jsonTick=null,lastRefreshAt=null,refreshError='',refreshBusy=false,autoOn=false;
+function paintRefreshLine(){
+  const el=$('refreshline');if(!el)return;
+  const every=Math.round(refreshMs/1000);
+  let s=autoOn?`Auto-refresh on · every ${every} second${every===1?'':'s'}`:'Auto-refresh is off until this page is opened from the website';
+  if(feed.url&&tick)s+=` · Data feed every ${feed.interval} seconds`;
+  if(refreshError)s+=` · Couldn't refresh: ${refreshError}. Showing the data already on screen.`;
+  if(lastRefreshAt)s+=` · Last refresh ${ctSec(lastRefreshAt)}`;
+  else if(autoOn&&!refreshError)s+=' · Waiting for the first refresh';
+  el.textContent=s;
+  el.classList.toggle('bad',!!refreshError);
+}
+function mergeDashboardFile(d){
+  if(Array.isArray(d)||(d&&Array.isArray(d.results))){applyRecords(d,'results.json');return 'feed'}
+  if(!d||!Array.isArray(d.races))throw Error('results.json has no race list');
+  const savedBy=byId,savedRaces=RACES;
+  byId=Object.fromEntries(d.races.map(r=>[r.id,r]));
+  RACES=d.races;
+  try{
+    const nextResults={};
+    const incoming=d.results&&typeof d.results==='object'&&!Array.isArray(d.results)?d.results:{};
+    for(const [rawId,res] of Object.entries(incoming)){
+      const id=aliasId(rawId);
+      if(!id||!res)continue;
+      const cands=Array.isArray(res.candidates)?res.candidates:[];
+      const clean=[];
+      for(const c of cands){
+        const name=String(c.candidate||c.name||'').trim();
+        if(!name)continue;
+        const src=safeUrl(c.source||res.source||'');
+        const at=isoOk(c.updated_at||res.updated_at||'');
+        const votes=Number(c.votes);
+        if(!src||!at||!Number.isInteger(votes)||votes<0)continue;
+        clean.push({candidate:name,party:String(c.party||'').trim(),votes,source:src,updated_at:at});
+      }
+      if(!clean.length||!clean.reduce((a,x)=>a+x.votes,0))continue;
+      const at=clean.map(x=>x.updated_at).sort().pop();
+      nextResults[id]={candidates:clean,updated_at:at,source:clean[0].source,origin:'results.json'};
+    }
+    const nextCalls={};
+    const calls=d.calls&&typeof d.calls==='object'&&!Array.isArray(d.calls)?d.calls:{};
+    for(const [rawId,call] of Object.entries(calls)){
+      const id=aliasId(rawId);
+      if(!id||!call)continue;
+      const name=String(call.candidate||'').trim();
+      const src=safeUrl(call.source||'');
+      const at=isoOk(call.called_at||'');
+      if(!name||!src||!at)continue;
+      if(nextCalls[id]&&nextCalls[id].candidate!==name)continue;
+      nextCalls[id]={candidate:name,party:String(call.party||'').trim(),source:src,called_at:at,origin:call.origin||'results.json'};
+    }
+    DATA.races=d.races;
+    DATA.results=nextResults;
+    DATA.calls=nextCalls;
+    if(d.states)DATA.states=d.states;
+    if(d.chamber)DATA.chamber=d.chamber;
+    if(d.election)DATA.election=d.election;
+    if(d.scaffold)DATA.scaffold=d.scaffold;
+    if(Array.isArray(d.feed_log))DATA.feed_log=d.feed_log;
+    DATA.last_results_update=d.last_results_update||null;
+    index();
+    return 'file';
+  }catch(err){
+    byId=savedBy;RACES=savedRaces;
+    throw err;
+  }
+}
+async function refreshFile(){
+  if(refreshBusy)return;
+  refreshBusy=true;
+  const btn=$('refresh');
+  if(btn){btn.disabled=true;btn.textContent='Refreshing…'}
+  try{
+    const base=window.__resultsUrl||'results.json';
+    const r=await fetch(base+(base.includes('?')?'&':'?')+'ts='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+    if(!r.ok)throw Error('HTTP '+r.status);
+    let d;try{d=await r.json()}catch{throw Error('results.json was not valid JSON')}
+    const kind=mergeDashboardFile(d);
+    lastRefreshAt=new Date().toISOString();
+    refreshError='';
+    if(kind!=='feed')render({keep:true});
+    else paintRefreshLine();
+  }catch(e){
+    refreshError=e.message||'Refresh failed';
+    paintRefreshLine();
+  }finally{
+    refreshBusy=false;
+    if(btn){btn.disabled=false;btn.textContent='Refresh'}
+  }
+}
+function startJsonRefresh(){
+  clearInterval(jsonTick);jsonTick=null;
+  autoOn=location.protocol.startsWith('http');
+  if(autoOn)jsonTick=setInterval(()=>refreshFile(),refreshMs);
+  paintRefreshLine();
+}
+function setRefreshMs(ms){
+  const n=Number(ms);
+  if(!Number.isFinite(n)||n<200)return;
+  refreshMs=n;
+  startJsonRefresh();
+  paintRefreshLine();
+}
+window.__refreshFile=refreshFile;
+window.__setRefreshMs=setRefreshMs;
 function countdown(){
   const close=Date.parse('2026-11-04T01:00:00Z');
   const now=Date.now(),d=close-now;let t;
@@ -673,7 +790,12 @@ function readHash(){
   view='tile';raceId=null;noState=null;
 }
 function go(hash){if(location.hash===hash){readHash();render();return}location.hash=hash}
-function render(){
+function render(opts){
+  const keep=!!(opts&&opts.keep);
+  const sx=keep?window.scrollX:0,sy=keep?window.scrollY:0;
+  const searchVal=$('search')?$('search').value:null;
+  const listEl=$('listq');
+  const listVal=listEl?listEl.value:null,listPos=listEl?listEl.selectionStart:null;
   readHash();
   document.body.dataset.view=view;
   document.title=view==='home'?'2026 Midterm Results':TILE_NAME[tile]+' · 2026 Midterm Results';
@@ -683,13 +805,20 @@ function render(){
   if(view!=='home')bindPanel();
   renderStatus();
   renderClock();
+  paintRefreshLine();
+  if(keep){
+    if(searchVal!=null&&$('search'))$('search').value=searchVal;
+    const q2=$('listq');
+    if(q2&&listVal!=null){q2.value=listVal;try{q2.setSelectionRange(listPos,listPos)}catch(e){}}
+    window.scrollTo(sx,sy);
+    requestAnimationFrame(()=>window.scrollTo(sx,sy));
+  }
 }
 
 const toCSV=rows=>rows.map(r=>r.map(v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(',')).join('\n')+'\n';
 function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
 async function pull(){try{const r=await fetch(feed.url,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const t=await r.text();let d;try{d=JSON.parse(t)}catch{d=parseCSV(t)}applyRecords(d,'feed '+hostOf(feed.url))}catch(e){toast('Feed error: '+e.message+' (CORS or network)')}}
-function startFeed(){clearInterval(tick);pull();tick=setInterval(pull,(feed.interval||300)*1000);render()}
-async function reloadJSON(){try{const r=await fetch('results.json',{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(d&&d.races&&(d.last_results_update!==DATA.last_results_update||JSON.stringify(d.calls)!==JSON.stringify(DATA.calls)||d.races.length!==DATA.races.length)){DATA=d;index();render();toast('Results refreshed from results.json')}}catch{}}
+function startFeed(){clearInterval(tick);pull();tick=setInterval(pull,(feed.interval||300)*1000);render({keep:true});paintRefreshLine()}
 
 function init(){
   index();loadLocal();
@@ -722,10 +851,12 @@ function init(){
   $('feedgo').onclick=()=>{const u=safeUrl($('feedurl').value.trim());if(!u){toast('Enter an https:// URL');return}feed={url:u,interval:Number($('feedint').value)||300};saveLocal();$('modal').classList.remove('show');startFeed()};
   $('feedstop').onclick=()=>{clearInterval(tick);tick=null;feed={url:'',interval:300};saveLocal();$('modal').classList.remove('show');render();toast('Feed polling stopped')};
   $('clearlocal').onclick=()=>{local={results:{},calls:{},at:null,origin:''};saveLocal();$('modal').classList.remove('show');render();toast('Local imports cleared')};
-  window.addEventListener('hashchange',render);
-  render();countdown();setInterval(()=>{countdown();renderClock()},30000);
+  $('refresh').onclick=()=>refreshFile();
+  window.addEventListener('hashchange',()=>render());
   if(feed.url)startFeed();
-  if(location.protocol.startsWith('http'))setInterval(reloadJSON,60000);
+  startJsonRefresh();
+  render();countdown();setInterval(()=>{countdown();renderClock()},30000);
+  if(autoOn)refreshFile();
 }
 init();
 </script>
