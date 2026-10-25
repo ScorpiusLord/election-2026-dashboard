@@ -51,6 +51,13 @@ h1{margin:2px 0 0;font-size:28px;letter-spacing:-.03em;line-height:1.1}
 .refreshbar .btn{flex:none}
 .refreshline{flex:1 1 220px;min-width:0;color:#d5e4f8;font-size:13.5px}
 .refreshline.bad{color:#ffc9cf}
+.feeds{margin:-6px 0 14px;color:#d5e4f8}
+.feeds summary{cursor:pointer;font-size:13.5px}
+.feedrows{display:grid;gap:6px;margin-top:8px}
+.feedrow{font-size:12.5px;line-height:1.35;padding:6px 8px;border-radius:8px;background:#132848}
+.feedrow a{color:#9fd0ff}
+.feedrow .held{color:#f3e2b0}
+.feedrow .bad{color:#ffc9cf}
 .dot{width:9px;height:9px;border-radius:99px;background:var(--gold);flex:none}
 .status.live .dot{background:var(--green)}
 .status strong{letter-spacing:.03em}
@@ -211,6 +218,10 @@ body[data-view="tile"] .tiles,body[data-view="race"] .tiles,body[data-view="nora
   <button class="btn primary" id="refresh" type="button">Refresh</button>
   <span class="refreshline" id="refreshline" role="status">Auto-refresh on · every 60 seconds</span>
 </div>
+<details class="feeds" id="feeds">
+  <summary id="feedsum">Result feeds</summary>
+  <div class="feedrows" id="feedrows"></div>
+</details>
 
 <div class="tiles" id="tileboard">
   <div class="tile house" data-go="#house" role="button" tabindex="0" aria-label="Open U.S. House">
@@ -286,7 +297,8 @@ body[data-view="tile"] .tiles,body[data-view="race"] .tiles,body[data-view="nora
     <div><h3>Sources</h3><ul id="scaffoldsrc"></ul></div>
     <div><h3>Rules</h3><ul>
       <li>Vote totals come only from a sourced feed or import. Nothing is estimated.</li>
-      <li>A race is called only when the data has an explicit called flag and a source. A lead is not a call.</li>
+      <li>A race is called only when the data has an explicit called flag and a source. A lead is not a call. A third-party winner flag is not a call.</li>
+      <li>Practice files and test data are refreshed, then held. They are not shown as vote totals.</li>
       <li>House, Senate, and governor bars count called seats only. Hatched Senate segments are seats not on the 2026 ballot.</li>
       <li>Times are Central Time (America/Chicago).</li>
       <li>Polls in Missouri: 6:00 a.m.–7:00 p.m. Central Time. Results: <a href="https://enr.sos.mo.gov/" target="_blank" rel="noopener">Missouri SOS election night</a>.</li>
@@ -299,7 +311,7 @@ body[data-view="tile"] .tiles,body[data-view="race"] .tiles,body[data-view="nora
 
 <div class="modalback" id="modal"><div class="modal" role="dialog" aria-labelledby="feedtitle">
   <h3 id="feedtitle">Live data feed</h3>
-  <p>This page already re-reads <code>results.json</code> every 60 seconds. Use a feed only for a different address. Both keep running together. The feed must be HTTPS and allow CORS. Each row needs <code>race_id,candidate,party,votes,called,source,updated_at</code>. Counts are kept only with an HTTPS source and a timestamp. A race is called only when <code>called</code> is set and that source is present.</p>
+  <p>Refresh already re-reads <code>results.json</code> and the result feeds under the button every 60 seconds. Use this box only for an extra address. All of them keep running together. An extra feed must be HTTPS and allow CORS. Each row needs <code>race_id,candidate,party,votes,called,source,updated_at</code>. Counts are kept only with an HTTPS source and a timestamp. A race is called only when <code>called</code> is set and that source is present.</p>
   <input class="search" id="feedurl" placeholder="https://example.org/results.json" aria-label="Feed URL">
   <select class="sel" id="feedint" aria-label="Poll interval"><option value="60">Every 1 min</option><option value="120">Every 2 min</option><option value="300" selected>Every 5 min</option></select>
   <div class="row">
@@ -360,7 +372,8 @@ const isOpen=r=>!(r.candidates||[]).some(c=>c.incumbent);
 
 function parseCSV(text){let L=[],f='',row=[],q=false;for(let i=0;i<text.length;i++){const ch=text[i];if(ch==='"'){if(q&&text[i+1]==='"'){f+='"';i++}else q=!q}else if(ch===','&&!q){row.push(f);f=''}else if((ch==='\n'||ch==='\r')&&!q){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(f);if(row.some(x=>x.trim()))L.push(row);row=[];f=''}else f+=ch}row.push(f);if(row.some(x=>x.trim()))L.push(row);const h=(L.shift()||[]).map(x=>x.trim().replace(/^\uFEFF/,'').toLowerCase());return L.map(r=>Object.fromEntries(h.map((k,i)=>[k,(r[i]||'').trim()])))}
 function aliasId(id){id=String(id||'').trim().toUpperCase();if(byId[id])return id;const m=id.match(/^H-([A-Z]{2})-(AL|0?0)$/);if(m&&byId['H-'+m[1]+'-01'])return 'H-'+m[1]+'-01';const m2=id.match(/^H-([A-Z]{2})-(\d)$/);if(m2&&byId['H-'+m2[1]+'-0'+m2[2]])return 'H-'+m2[1]+'-0'+m2[2];return null}
-function applyRecords(data,origin){
+function applyRecords(data,origin,opts){
+  const quiet=!!(opts&&opts.quiet);
   let rows=Array.isArray(data)?data:(data&&Array.isArray(data.results)?data.results:null);
   if(!rows)throw Error('Expected an array of records or {"results":[...]}');
   const fresh={},calls={};let used=0,skipped=0,reasons={};
@@ -377,10 +390,15 @@ function applyRecords(data,origin){
     if(called){if(calls[id]&&calls[id].candidate!==cand)throw Error('More than one winner called in '+id);calls[id]={candidate:cand,party:String(row.party||'').trim(),source:src,called_at:at,origin}}
     used++;
   }
-  if(!used)throw Error('No valid records ('+Object.entries(reasons).map(([k,v])=>v+' '+k).join(', ')+')');
-  for(const [id,c] of Object.entries(fresh)){if(!c.reduce((a,x)=>a+x.votes,0)){skip('race totals all zero');continue}const at=c.map(x=>x.updated_at).sort().pop();local.results[id]={candidates:c,updated_at:at,source:c[0].source,origin}}
+  if(!used){if(quiet)return {used:0,skipped,reasons};throw Error('No valid records ('+Object.entries(reasons).map(([k,v])=>v+' '+k).join(', ')+')')}
+  let stored=0,changed=false;
+  for(const [id,c] of Object.entries(fresh)){if(!c.reduce((a,x)=>a+x.votes,0)){skip('race totals all zero');continue}const at=c.map(x=>x.updated_at).sort().pop();const prev=local.results[id];const same=prev&&prev.updated_at===at&&prev.candidates.length===c.length&&prev.candidates.every((x,i)=>x.candidate===c[i].candidate&&x.votes===c[i].votes);if(!same)changed=true;local.results[id]={candidates:c,updated_at:at,source:c[0].source,origin};stored++}
+  if(Object.keys(calls).length)changed=true;
+  if(!stored&&!Object.keys(calls).length){if(quiet)return {used,skipped,reasons,stored:0};}
+  if(quiet&&!changed)return {used,skipped,reasons,stored,unchanged:true};
   Object.assign(local.calls,calls);local.at=new Date().toISOString();local.origin=origin;saveLocal();render({keep:true});
-  toast(`${used} records loaded from ${origin}; ${skipped} skipped${skipped?' ('+Object.entries(reasons).map(([k,v])=>v+' '+k).join(', ')+')':''}`);
+  if(!quiet)toast(`${used} records loaded from ${origin}; ${skipped} skipped${skipped?' ('+Object.entries(reasons).map(([k,v])=>v+' '+k).join(', ')+')':''}`);
+  return {used,skipped,reasons,stored};
 }
 
 function tallyOffice(off){const rs=RACES.filter(r=>r.office===off);let d=0,rr=0,o=0,rep=0;for(const r of rs){const x=get(r);if(x.call){const p=normParty(x.call.party);if(p==='D')d++;else if(p==='R')rr++;else o++}else if(x.status==='reporting')rep++}return {n:rs.length,d,r:rr,o,rep,unc:rs.length-d-rr-o}}
@@ -650,7 +668,7 @@ function renderStatus(){
   const ds=[`<li>Race scaffold built ${esc(ct(DATA.scaffold.built_at))}</li>`,`<li>Results last updated: ${last?esc(ct(last)):'never (pre-election)'}</li>`,`<li>${Object.keys(DATA.results||{}).length} embedded result races · ${Object.keys(DATA.calls||{}).length} embedded calls</li>`];
   if(local.at)ds.push(`<li>Local import in this browser: ${Object.keys(local.results).length} races, ${Object.keys(local.calls).length} calls · ${esc(local.origin)} · ${esc(ct(local.at))}</li>`);
   if(feed.url&&tick)ds.push(`<li>Polling ${esc(feed.url)} every ${feed.interval}s</li>`);
-  if(autoOn)ds.push(`<li>Auto-refresh of results.json: on, every ${Math.round(refreshMs/1000)} second${Math.round(refreshMs/1000)===1?'':'s'}</li>`);
+  if(autoOn)ds.push(`<li>Auto-refresh of results.json and the result feeds: on, every ${Math.round(refreshMs/1000)} second${Math.round(refreshMs/1000)===1?'':'s'}</li>`);
   else ds.push('<li>Auto-refresh of results.json: off until this page is opened from the website</li>');
   if(lastRefreshAt)ds.push(`<li>Last refresh ${esc(ctSec(lastRefreshAt))}</li>`);
   if(refreshError)ds.push(`<li>Last refresh error: ${esc(refreshError)}. Data already on screen was kept.</li>`);
@@ -667,17 +685,19 @@ function renderStatus(){
 }
 function renderClock(){$('clock').textContent=new Date().toLocaleString('en-US',{timeZone:TZ,weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})+' · Central Time'}
 const ctSec=iso=>{if(!iso)return '—';const d=new Date(iso);if(isNaN(d))return '—';return d.toLocaleString('en-US',{timeZone:TZ,month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit',timeZoneName:'short'})};
-let refreshMs=60000,jsonTick=null,lastRefreshAt=null,refreshError='',refreshBusy=false,autoOn=false;
+let refreshMs=60000,jsonTick=null,lastRefreshAt=null,refreshError='',refreshBusy=false,autoOn=false,feedSummary='',feedReport=[];
 function paintRefreshLine(){
   const el=$('refreshline');if(!el)return;
   const every=Math.round(refreshMs/1000);
   let s=autoOn?`Auto-refresh on · every ${every} second${every===1?'':'s'}`:'Auto-refresh is off until this page is opened from the website';
-  if(feed.url&&tick)s+=` · Data feed every ${feed.interval} seconds`;
-  if(refreshError)s+=` · Couldn't refresh: ${refreshError}. Showing the data already on screen.`;
+  if(feed.url&&tick)s+=` · Extra data feed every ${feed.interval} seconds`;
+  if(feedSummary)s+=` · ${feedSummary}`;
+  if(refreshError)s+=` · Couldn't refresh results.json: ${refreshError}. Showing the data already on screen.`;
   if(lastRefreshAt)s+=` · Last refresh ${ctSec(lastRefreshAt)}`;
   else if(autoOn&&!refreshError)s+=' · Waiting for the first refresh';
   el.textContent=s;
   el.classList.toggle('bad',!!refreshError);
+  paintFeedRows();
 }
 function mergeDashboardFile(d){
   if(Array.isArray(d)||(d&&Array.isArray(d.results))){applyRecords(d,'results.json');return 'feed'}
@@ -734,24 +754,512 @@ function mergeDashboardFile(d){
     throw err;
   }
 }
-async function refreshFile(){
+const POLLS_CLOSE=Date.parse('2026-11-04T01:00:00Z');
+const GENERAL_DAY=Date.parse('2026-11-03T00:00:00-05:00');
+const FEEDS=[
+  {name:'civicAPI',coverage:'MO-4 general',url:'https://civicapi.org/api/v2/race/87237',mode:'civic'},
+  {name:'civicAPI',coverage:'MO House District 56',url:'https://civicapi.org/api/v2/race/156158',mode:'civic'},
+  {name:'civicAPI',coverage:'MO Proposition A',url:'https://civicapi.org/api/v2/race/156342',mode:'civic'},
+  {name:'civicAPI',coverage:'MO Amendment 3',url:'https://civicapi.org/api/v2/race/87243',mode:'civic'},
+  {name:'civicAPI',coverage:'MO Amendment 6',url:'https://civicapi.org/api/v2/race/156339',mode:'civic'},
+  {name:'civicAPI',coverage:'MO Amendment 7',url:'https://civicapi.org/api/v2/race/156340',mode:'civic'},
+  {name:'civicAPI',coverage:'MO Amendment 8',url:'https://civicapi.org/api/v2/race/156341',mode:'civic'},
+  {name:'civicAPI',coverage:'MO State Auditor',url:'https://civicapi.org/api/v2/race/87242',mode:'civic'},
+  {name:'civicAPI',coverage:'US House national totals',url:'https://civicapi.org/api/v2/race/87524',mode:'civic'},
+  {name:'civicAPI',coverage:'US Senate national totals',url:'https://civicapi.org/api/v2/race/87528',mode:'civic'},
+  {name:'civicAPI',coverage:'All Missouri races',url:'https://civicapi.org/api/v2/race/search?country=US&province=MO&limit=50',mode:'civic-search'},
+  {name:'civicAPI',coverage:'MO HD56 Republican primary (accuracy check)',url:'https://civicapi.org/api/v2/race/84615',mode:'note',detail:'August primary. Not loaded into the November general.'},
+  {name:'Open America',coverage:'US House 2026',url:'https://openamerica.io/elections/results.json?year=2026&office=House',mode:'openamerica'},
+  {name:'Open America',coverage:'US Senate 2026',url:'https://openamerica.io/elections/results.json?year=2026&office=Senate',mode:'openamerica'},
+  {name:'Open America',coverage:'Governor 2026',url:'https://openamerica.io/elections/results.json?year=2026&office=Governor',mode:'openamerica'},
+  {name:'Open America',coverage:'US House 2024 replay',url:'https://openamerica.io/elections/results.json?year=2024&office=House',mode:'note',detail:'2024 replay for testing. Not shown on this 2026 dashboard.'},
+  {name:'watch.vote',coverage:'US Senate 2026',url:'https://watch.vote/api/elections/2026/results?office=senate',mode:'watch'},
+  {name:'watch.vote',coverage:'US House 2026',url:'https://watch.vote/api/elections/2026/results?office=house',mode:'watch'},
+  {name:'watch.vote',coverage:'Governors 2026',url:'https://watch.vote/api/elections/2026/results?office=governor',mode:'watch'},
+  {name:'watch.vote',coverage:'Missouri ballot results',url:'https://watch.vote/api/elections/2026/ballot/results?state=MO',mode:'watch'},
+  {name:'Florida Division of Elections',coverage:'Florida 2026 statewide',url:'https://flelectionfiles.floridados.gov/enightfilespublic/20261103_ElecResultsFL.txt',mode:'florida'},
+  {name:'Florida Division of Elections',coverage:'Florida Aug 18, 2026 primary',url:'https://flelectionfiles.floridados.gov/enightfilespublic/20260818_ElecResultsFL.txt',mode:'note',detail:'Primary file. Not loaded into the November general.'},
+  {name:'Florida Division of Elections',coverage:'Florida 2024 general',url:'https://flelectionfiles.floridados.gov/enightfilespublic/20241105_ElecResultsFL.txt',mode:'note',detail:'Past election. Not shown on this 2026 dashboard.'},
+  {name:'Minnesota SOS',coverage:'Minnesota US Senate',url:'https://electionresultsfiles.sos.mn.gov/20261103/ussenate.txt',mode:'minnesota'},
+  {name:'Minnesota SOS',coverage:'Minnesota US House',url:'https://electionresultsfiles.sos.mn.gov/20261103/ushouse.txt',mode:'minnesota'},
+  {name:'Minnesota SOS',coverage:'Minnesota Governor',url:'https://electionresultsfiles.sos.mn.gov/20261103/governor.txt',mode:'minnesota'},
+  {name:'Minnesota SOS',coverage:'Minnesota 2026 primary, US Senate',url:'https://electionresultsfiles.sos.mn.gov/20260811/ussenate.txt',mode:'note',detail:'Primary file. Not loaded into the November general.'},
+  {name:'Minnesota SOS',coverage:'Minnesota 2024 US Senate',url:'https://electionresultsfiles.sos.mn.gov/20241105/ussenate.txt',mode:'note',detail:'Past election. Not shown on this 2026 dashboard.'},
+  {name:'Minnesota SOS',coverage:'Directory listing',url:'https://electionresultsfiles.sos.mn.gov/20261103/',mode:'note',detail:'No file list is published. The named files above are the feed.'},
+  {name:'California SOS',coverage:'California Governor',url:'https://api.sos.ca.gov/returns/governor',mode:'california',raceId:'G-CA'},
+  {name:'California SOS',coverage:'California US House districts 1–52',url:'https://api.sos.ca.gov/returns/us-rep/district/1',mode:'ca-house'},
+  {name:'California SOS',coverage:'California US Senate',url:'https://api.sos.ca.gov/returns/us-senate',mode:'california',raceId:'S-CA'},
+  {name:'Washington SOS',coverage:'Washington 2024 statewide',url:'https://results.vote.wa.gov/results/20241105/export/20241105_AllState.csv',mode:'note',detail:'Past election. Not shown on this 2026 dashboard.'},
+  {name:'Washington SOS',coverage:'Washington 2026 statewide',url:'https://results.vote.wa.gov/results/20261103/export/20261103_AllState.csv',mode:'washington'},
+  {name:'Washington SOS',coverage:'Washington 2026 primary',url:'https://results.vote.wa.gov/results/20260804/export/20260804_AllState.csv',mode:'note',detail:'Primary path. Not loaded into the November general.'},
+  {name:'NC State Board of Elections',coverage:'NC Senate and House precinct file',url:'https://s3.amazonaws.com/dl.ncsbe.gov/ENRS/2026_11_03/results_pct_20261103.zip',mode:'nc-zip'},
+  {name:'NC State Board of Elections',coverage:'NC precincts reporting',url:'https://er.ncsbe.gov/enr/20261103/data/results_0.txt',mode:'nc-json'},
+  {name:'Clarity',coverage:'Iowa elections',url:'https://results.enr.clarityelections.com/IA/elections.json',mode:'clarity',state:'IA'},
+  {name:'Clarity',coverage:'Iowa results pattern',url:'https://results.enr.clarityelections.com/IA/{EID}/{ver}/reports/summary.zip',mode:'note',detail:'Filled from the Iowa elections list once the November 3 general is posted.'},
+  {name:'Clarity',coverage:'Iowa primary version',url:'https://results.enr.clarityelections.com/IA/126082/current_ver.txt',mode:'clarity-ver'},
+  {name:'Clarity',coverage:'Colorado elections',url:'https://results.enr.clarityelections.com/CO/elections.json',mode:'clarity',state:'CO'},
+  {name:'Clarity',coverage:'Colorado primary version',url:'https://results.enr.clarityelections.com/CO/126592/current_ver.txt',mode:'clarity-ver'},
+  {name:'Clarity',coverage:'Alabama elections',url:'https://results.enr.clarityelections.com/AL/elections.json',mode:'clarity',state:'AL'},
+  {name:'Clarity',coverage:'Florida elections list',url:'https://results.enr.clarityelections.com/FL/elections.json',mode:'clarity',state:'FL'},
+  {name:'Clarity',coverage:'Georgia elections',url:'https://results.enr.clarityelections.com/GA/elections.json',mode:'clarity',state:'GA'},
+  {name:'Clarity',coverage:'Kansas elections',url:'https://results.enr.clarityelections.com/KS/elections.json',mode:'clarity',state:'KS'},
+  {name:'Clarity',coverage:'Oklahoma elections',url:'https://results.enr.clarityelections.com/OK/elections.json',mode:'clarity',state:'OK'},
+  {name:'Clarity',coverage:'South Carolina elections',url:'https://results.enr.clarityelections.com/SC/elections.json',mode:'clarity',state:'SC'},
+  {name:'Clarity',coverage:'West Virginia elections',url:'https://results.enr.clarityelections.com/WV/elections.json',mode:'clarity',state:'WV'},
+  {name:'Missouri SOS',coverage:'Statewide election night site',url:'https://enr.sos.mo.gov/',mode:'note',detail:'Web page blocked by a bot check. Missouri does not publish a public results file.'},
+  {name:'Missouri SOS',coverage:'Results by county',url:'https://enr.sos.mo.gov/CountyResults.aspx',mode:'note',detail:'Web page blocked by a bot check. Not a results file.'},
+  {name:'Missouri SOS',coverage:'Legacy XML service',url:'https://enr.sos.mo.gov/ENR/ReadXMLService.asmx',mode:'note',detail:'Old address, blocked. Not usable.'},
+  {name:'Missouri SOS',coverage:'Legacy tabular page',url:'https://enr.sos.mo.gov/ENR/Views/TabularData.aspx',mode:'note',detail:'Old address, blocked. Not usable.'},
+  {name:'Missouri SOS',coverage:'Legacy report viewer',url:'https://enr.sos.mo.gov/ENR/ENRReport/ReportViewer.aspx',mode:'note',detail:'This address is gone.'},
+  {name:'Missouri SOS',coverage:'Results index',url:'https://www.sos.mo.gov/elections/results',mode:'note',detail:'Index of official PDFs, not an election-night feed.'},
+  {name:'Missouri SOS',coverage:'November 5, 2024 results PDF',url:'https://www.sos.mo.gov/CMSImages/ElectionResultsStatistics/ActualResults-November52024.pdf',mode:'note',detail:'Past election PDF. Not shown on this 2026 dashboard.'},
+  {name:'Missouri SOS',coverage:'ENR archive',url:'https://enrarchives.sos.mo.gov/',mode:'note',detail:'Redirects to the Secretary of State site. Not a results file.'},
+  {name:'Cass County Clerk',coverage:'Current election summary PDF',url:'https://www.casscounty.com/DocumentCenter/View/2541',mode:'note',detail:'Official PDF, not a live feed. It currently holds the August 2026 results.'},
+  {name:'Cass County Clerk',coverage:'Past election results',url:'https://www.casscounty.com/2228/Past-Election-Results',mode:'note',detail:'Page of links to past PDFs. Not a live feed.'},
+  {name:'Cass County Clerk',coverage:'Election authority',url:'https://www.casscounty.com/2210/County-ClerkElection-Authority',mode:'note',detail:'Office page. Not a results file.'}
+];
+function httpDate(v){const t=Date.parse(v||'');return v&&!isNaN(t)?new Date(t).toISOString():null}
+function feedFail(e){const m=e&&e.message||'Refresh failed';return /failed to fetch|networkerror|load failed|cors/i.test(m)?'Browser blocked this feed. Counts already on screen were kept.':m}
+async function feedFetch(url){if(window.__feedFetch)return window.__feedFetch(url);return fetch(url,{cache:'no-store'})}
+async function readMaybeGzip(res){
+  const buf=await res.arrayBuffer();
+  const u=new Uint8Array(buf);
+  if(u.length>=2&&u[0]===0x1f&&u[1]===0x8b){
+    const out=await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+    return new TextDecoder().decode(out);
+  }
+  return new TextDecoder().decode(u);
+}
+async function unzipText(buf){
+  const bytes=new Uint8Array(buf),dv=new DataView(buf);
+  let eocd=-1;
+  for(let i=bytes.length-22;i>=Math.max(0,bytes.length-22-65536);i--){if(bytes[i]===0x50&&bytes[i+1]===0x4b&&bytes[i+2]===0x05&&bytes[i+3]===0x06){eocd=i;break}}
+  if(eocd<0)throw Error('Not a zip file');
+  const start=dv.getUint32(eocd+16,true);
+  const method=dv.getUint16(start+10,true);
+  const compSize=dv.getUint32(start+20,true);
+  const nameLen=dv.getUint16(start+28,true);
+  const localOff=dv.getUint32(start+42,true);
+  const localName=dv.getUint16(localOff+26,true);
+  const localExtra=dv.getUint16(localOff+28,true);
+  const dataStart=localOff+30+localName+localExtra;
+  const comp=bytes.subarray(dataStart,dataStart+compSize);
+  let raw=comp;
+  if(method===8)raw=new Uint8Array(await new Response(new Blob([comp]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  else if(method!==0)throw Error('Unsupported zip');
+  return new TextDecoder().decode(raw);
+}
+async function pool(items,n,fn){
+  const out=new Array(items.length);let i=0;
+  await Promise.all(Array.from({length:Math.min(n,items.length)},async()=>{while(i<items.length){const k=i++;out[k]=await fn(items[k])}}));
+  return out;
+}
+function civicRaceId(race){
+  const prov=String(race.province||'').toUpperCase();
+  if(!prov||prov==='US')return null;
+  const type=String(race.election_type||race.type||'');
+  const name=String(race.election_name||'');
+  const dist=String(race.district||'');
+  if(/House of Representatives/i.test(type)&&!/State House/i.test(type)){const m=dist.match(/^([A-Z]{2})-0*(\d+)$/i);if(m)return `H-${m[1].toUpperCase()}-${String(m[2]).padStart(2,'0')}`}
+  if(/State House/i.test(type)){const m=dist.match(/HD-0*(\d+)/i)||name.match(/State House\s+0*(\d+)/i);if(m)return `SH-${prov}-${Number(m[1])}`}
+  if(/State Auditor/i.test(name)||/State Auditor/i.test(type))return prov==='MO'?'MO-AUD':null;
+  if(/Proposition A/i.test(name))return 'MO-PROPA';
+  const am=name.match(/Amendment\s+(\d+)/i);if(am&&prov==='MO')return 'MO-AM'+am[1];
+  if(/Paul C\. Wilson/i.test(name))return 'J-SC-WILSON';
+  if(/Lisa White Hardwick/i.test(name))return 'J-WD-HARDWICK';
+  if(/Governor/i.test(type))return 'G-'+prov;
+  if(/Senate/i.test(type)&&!/State Senate/i.test(type))return 'S-'+prov;
+  return null;
+}
+function civicRows(body,url){
+  if(body.test_data===true)return {state:'held',detail:'Test data. Not shown.',rows:[]};
+  const date=String(body.election_date||'');
+  if(date&&!date.startsWith('2026-11-03'))return {state:'skip',detail:'Not the November 3, 2026 general.',rows:[]};
+  if(/primary/i.test(body.election_scope||'')||/primary/i.test(body.election_name||''))return {state:'skip',detail:'Primary results are not loaded into the general.',rows:[]};
+  const id=civicRaceId(body);
+  if(!id)return {state:'empty',detail:body.province==='US'?'National totals are not added as a race.':'No matching race on this dashboard.',rows:[]};
+  const at=isoOk(body.last_updated||'');
+  if(!at)return {state:'empty',detail:'No timestamp on this race.',rows:[]};
+  const rows=[];
+  for(const c of body.candidates||[]){
+    const votes=Number(c.votes);
+    if(!c.name||!Number.isInteger(votes)||votes<0)continue;
+    rows.push({race_id:id,candidate:c.name,party:c.party||'',votes,called:'',source:url,updated_at:at});
+  }
+  if(!rows.reduce((a,r)=>a+r.votes,0))return {state:'empty',detail:'File is up, with 0 votes.',rows:[]};
+  return {state:'ok',detail:id,rows,priority:3};
+}
+async function loadCivic(url){
+  const res=await feedFetch(url);if(!res.ok)throw Error('HTTP '+res.status);
+  return civicRows(JSON.parse(await readMaybeGzip(res)),url);
+}
+async function loadCivicSearch(url){
+  const rows=[];const seen=new Set();let held=0;
+  for(let offset=0;offset<1000;offset+=50){
+    const pageUrl=url+(url.includes('offset=')?'':(url.includes('?')?'&':'?')+'offset='+offset);
+    const res=await feedFetch(pageUrl);if(!res.ok)throw Error('HTTP '+res.status);
+    const data=JSON.parse(await readMaybeGzip(res));
+    const races=data.races||[];if(!races.length)break;
+    let fresh=0;
+    for(const race of races){
+      if(seen.has(race.id))continue;seen.add(race.id);fresh++;
+      const votes=(race.candidates||[]).reduce((a,c)=>a+(Number(c.votes)||0),0);
+      if(!votes)continue;
+      const fullUrl='https://civicapi.org/api/v2/race/'+race.id;
+      const full=await feedFetch(fullUrl);if(!full.ok)continue;
+      const part=civicRows(JSON.parse(await readMaybeGzip(full)),fullUrl);
+      if(part.state==='held')held++;else rows.push(...(part.rows||[]));
+    }
+    if(!fresh||races.length<50)break;
+  }
+  if(rows.length)return {state:'ok',detail:held?held+' test races held':'Missouri search',rows,priority:2};
+  if(held)return {state:'held',detail:held+' races are test data. Not shown.',rows:[]};
+  return {state:'empty',detail:'Missouri search is up, with 0 votes.',rows:[]};
+}
+function oaId(office,key){
+  if(office==='House'){const m=String(key).match(/^([A-Z]{2})-0*(\d+)$/);if(m)return `H-${m[1]}-${String(m[2]).padStart(2,'0')}`}
+  if(office==='Senate'&&/^[A-Z]{2}$/.test(key))return 'S-'+key;
+  if(office==='Governor'&&/^[A-Z]{2}$/.test(key))return 'G-'+key;
+  return null;
+}
+async function loadOpenAmerica(url){
+  const res=await feedFetch(url);if(!res.ok)throw Error('HTTP '+res.status);
+  const body=JSON.parse(await readMaybeGzip(res));
+  if(Number(body.year)!==2026)return {state:'skip',detail:'Only 2026 results are loaded.',rows:[]};
+  const races=body.races||{},keys=Object.keys(races);
+  if(!keys.length)return {state:'empty',detail:'No races in this file yet.',rows:[]};
+  const at=isoOk(body.as_of||'')||httpDate(res.headers.get('last-modified'));
+  if(!at)return {state:'empty',detail:'No as_of timestamp on this file.',rows:[]};
+  const rows=[];
+  for(const key of keys){
+    const id=oaId(body.office,key);if(!id)continue;
+    for(const c of (races[key].cands||[])){
+      const votes=Number(c.v);
+      if(!c.n||!Number.isInteger(votes)||votes<0)continue;
+      rows.push({race_id:id,candidate:c.n,party:c.p||'',votes,called:'',source:url,updated_at:at});
+    }
+  }
+  if(!rows.reduce((a,r)=>a+r.votes,0))return {state:'empty',detail:'No vote totals in this file yet.',rows:[]};
+  return {state:'ok',detail:body.office,rows,priority:1};
+}
+function parseCaTime(s){
+  const months={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+  const m=String(s||'').match(/([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4}),\s*(\d{1,2}):(\d{2})\s*(a\.m\.|p\.m\.)/i);
+  if(!m||!months[m[1].toLowerCase()])return null;
+  let h=+m[4];const pm=/p/i.test(m[6]);if(pm&&h<12)h+=12;if(!pm&&h===12)h=0;
+  const month=months[m[1].toLowerCase()];
+  const offset=(+m[3]>2026||(+m[3]===2026&&month>=11))?'-08:00':'-07:00';
+  return isoOk(`${m[3]}-${String(month).padStart(2,'0')}-${String(m[2]).padStart(2,'0')}T${String(h).padStart(2,'0')}:${m[5]}:00${offset}`);
+}
+async function loadCalifornia(url,raceId){
+  const res=await feedFetch(url);if(!res.ok)throw Error('HTTP '+res.status);
+  const body=JSON.parse(await readMaybeGzip(res));
+  const at=parseCaTime(body.ReportingTime);
+  if(!at)return {state:'empty',detail:'No reporting time on this file.',rows:[]};
+  if(Date.parse(at)<GENERAL_DAY)return {state:'held',detail:'Practice file from '+body.ReportingTime+'. Not shown.',rows:[]};
+  const rows=[];
+  for(const c of body.candidates||[]){
+    const votes=Number(String(c.Votes??c.votes??'').replaceAll(',',''));
+    const name=c.Name||c.name;
+    if(!name||!Number.isInteger(votes)||votes<0)continue;
+    rows.push({race_id:raceId,candidate:name,party:c.Party||c.party||'',votes,called:'',source:url,updated_at:at});
+  }
+  if(!rows.reduce((a,r)=>a+r.votes,0))return {state:'empty',detail:'File is up, with 0 votes.',rows:[]};
+  return {state:'ok',detail:raceId,rows,priority:5};
+}
+async function loadCaHouse(url){
+  const first=await loadCalifornia(url,'H-CA-01');
+  if(first.state!=='ok'&&first.state!=='empty')return first;
+  const jobs=[];
+  for(let d=2;d<=52;d++)jobs.push([d,`https://api.sos.ca.gov/returns/us-rep/district/${d}`]);
+  const rest=await pool(jobs,6,async([d,u])=>{try{return await loadCalifornia(u,`H-CA-${String(d).padStart(2,'0')}`)}catch(e){return {state:'error',detail:feedFail(e),rows:[]}}});
+  const rows=[...(first.rows||[])];let n=first.state==='ok'?1:0;let blocked=0;
+  for(const part of rest){if(part.state==='ok'){n++;rows.push(...part.rows)}else if(part.state==='error')blocked++}
+  if(!rows.length)return {state:first.state,detail:(first.detail||'District 1 checked.')+(blocked?` ${blocked} districts blocked.`:''),rows:[]};
+  return {state:'ok',detail:`${n} California House districts`,rows,priority:5};
+}
+async function loadWatch(url){
+  const res=await feedFetch(url);if(!res.ok)throw Error('HTTP '+res.status);
+  const body=JSON.parse(await readMaybeGzip(res));
+  const rowsIn=Array.isArray(body.rows)?body.rows:(Array.isArray(body.results)?body.results:null);
+  if(!rowsIn||!rowsIn.length)return {state:'empty',detail:'No results in this file yet.',rows:[]};
+  const at=isoOk(body.readAt||body.as_of||body.updated_at||'')||httpDate(res.headers.get('last-modified'))||new Date().toISOString();
+  const rows=[];
+  for(const row of rowsIn){
+    const cand=row.candidate||row.name||row.choice;
+    const votes=Number(String(row.votes??row.vote??row.v??'').replaceAll(',',''));
+    let id=row.race_id||row.raceId||'';
+    if(!id){
+      const st=String(row.state||body.state||'').toUpperCase();
+      const office=String(row.office||body.office||'');
+      if(st&&/senate/i.test(office))id='S-'+st;
+      else if(st&&/governor/i.test(office))id='G-'+st;
+      else if(st&&/house/i.test(office)&&row.district)id=`H-${st}-${String(row.district).padStart(2,'0')}`;
+    }
+    if(!id||!cand||!Number.isInteger(votes)||votes<0)continue;
+    rows.push({race_id:id,candidate:cand,party:row.party||'',votes,called:'',source:url,updated_at:at});
+  }
+  if(!rows.length)return {state:'empty',detail:'Rows were not in a recognized results layout.',rows:[]};
+  if(!rows.reduce((a,r)=>a+r.votes,0))return {state:'empty',detail:'File is up, with 0 votes.',rows:[]};
+  return {state:'ok',detail:'watch.vote',rows,priority:1};
+}
+async function loadFlorida(url){
+  const res=await feedFetch(url);if(!res.ok)throw Error('HTTP '+res.status);
+  const text=await readMaybeGzip(res);
+  const at=httpDate(res.headers.get('last-modified'))||new Date().toISOString();
+  const lines=text.split(/\r?\n/).filter(Boolean);
+  const hdr=lines.shift().split('\t');
+  const ix=Object.fromEntries(hdr.map((h,i)=>[h,i]));
+  const acc=new Map();
+  for(const line of lines){
+    const p=line.split('\t');
+    if((p[ix.ElectionDate]||'')!=='11/03/2026')continue;
+    const code=p[ix.RaceCode],name=p[ix.RaceName]||'';
+    let id=null;
+    if(code==='USS')id='S-FL';
+    else if(code==='GOV'&&name==='Governor')id='G-FL';
+    else if(code==='USR'){const m=name.match(/District\s+(\d+)/i);if(m)id=`H-FL-${String(m[1]).padStart(2,'0')}`}
+    if(!id)continue;
+    const cand=[p[ix.CanNameFirst],p[ix.CanNameMiddle],p[ix.CanNameLast]].filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
+    const votes=Number(p[ix.CanVotes]);
+    if(!cand||!Number.isInteger(votes)||votes<0)continue;
+    const key=id+'|'+cand+'|'+(p[ix.PartyName]||'');
+    acc.set(key,(acc.get(key)||0)+votes);
+  }
+  const rows=[...acc].map(([key,votes])=>{const [id,cand,party]=key.split('|');return {race_id:id,candidate:cand,party,votes,called:'',source:url,updated_at:at}});
+  if(!rows.length)return {state:'empty',detail:'No House, Senate, or governor rows in this file.',rows:[]};
+  if(!rows.reduce((a,r)=>a+r.votes,0))return {state:'empty',detail:'File is up, with 0 votes.',rows:[]};
+  return {state:'ok',detail:'Florida',rows,priority:5};
+}
+async function loadMinnesota(url){
+  const res=await feedFetch(url);if(!res.ok)throw Error('HTTP '+res.status);
+  if(Date.now()<POLLS_CLOSE)return {state:'held',detail:'This file has non-zero test data. Not shown until polls close.',rows:[]};
+  const text=await readMaybeGzip(res);
+  const at=httpDate(res.headers.get('last-modified'))||new Date().toISOString();
+  const acc=new Map();
+  for(const line of text.split(/\r?\n/)){
+    if(!line.trim())continue;
+    const p=line.split(';');
+    const office=p[4]||'',dist=p[5]||'',cand=(p[7]||'').trim(),party=p[10]||'',votes=Number(p[13]);
+    let id=null;
+    if(/ussenate/.test(url)||/U\.S\. Senator/i.test(office))id='S-MN';
+    else if(/governor/.test(url)||/^Governor/i.test(office))id='G-MN';
+    else if(/ushouse/.test(url)||/Representative/i.test(office)){const m=office.match(/District\s+(\d+)/i)||String(dist).match(/^(\d+)$/);if(m)id=`H-MN-${String(m[1]).padStart(2,'0')}`}
+    if(!id||!cand||!Number.isInteger(votes)||votes<0)continue;
+    const key=id+'|'+cand+'|'+party;
+    acc.set(key,Math.max(acc.get(key)||0,votes));
+  }
+  const rows=[...acc].map(([key,votes])=>{const [id,cand,party]=key.split('|');return {race_id:id,candidate:cand,party,votes,called:'',source:url,updated_at:at}});
+  if(!rows.reduce((a,r)=>a+(r.votes||0),0))return {state:'empty',detail:'File is up, with 0 votes.',rows:[]};
+  return {state:'ok',detail:'Minnesota',rows,priority:5};
+}
+function ncId(name){
+  if(/US SENATE/i.test(name))return 'S-NC';
+  if(/\bGOVERNOR\b/i.test(name)&&!/LT\.?\s*GOVERNOR/i.test(name))return 'G-NC';
+  if(/HOUSE|CONGRESS|REPRESENTATIVE/i.test(name)){const m=String(name).match(/(\d+)/);if(m)return `H-NC-${String(m[1]).padStart(2,'0')}`}
+  return null;
+}
+async function loadNcJson(url){
+  const res=await feedFetch(url);if(!res.ok)throw Error('HTTP '+res.status);
+  const data=JSON.parse(await readMaybeGzip(res));
+  const at=httpDate(res.headers.get('last-modified'))||new Date().toISOString();
+  const acc=new Map();
+  for(const row of (Array.isArray(data)?data:[])){
+    const id=ncId(row.cnm||'');if(!id)continue;
+    const votes=Number(row.vct),cand=String(row.bnm||'').trim();
+    if(!cand||!Number.isInteger(votes)||votes<0)continue;
+    const key=id+'|'+cand+'|'+(row.pty||'');
+    acc.set(key,(acc.get(key)||0)+votes);
+  }
+  const rows=[...acc].map(([key,votes])=>{const [id,cand,party]=key.split('|');return {race_id:id,candidate:cand,party,votes,called:'',source:url,updated_at:at}});
+  if(!rows.reduce((a,r)=>a+r.votes,0))return {state:'empty',detail:'File is up, with 0 votes.',rows:[]};
+  return {state:'ok',detail:'North Carolina',rows,priority:5};
+}
+async function loadNcZip(url){
+  const res=await feedFetch(url);if(!res.ok)throw Error('HTTP '+res.status);
+  const text=await unzipText(await res.arrayBuffer());
+  const at=httpDate(res.headers.get('last-modified'))||new Date().toISOString();
+  const lines=text.split(/\r?\n/).filter(Boolean);
+  const hdr=lines.shift().split('\t');
+  const ix=Object.fromEntries(hdr.map((h,i)=>[h.trim(),i]));
+  const acc=new Map();
+  for(const line of lines){
+    const p=line.split('\t');
+    const id=ncId(p[ix['Contest Name']]||'');if(!id)continue;
+    const cand=String(p[ix.Choice]||'').trim();
+    const votes=Number(p[ix['Total Votes']]);
+    if(!cand||!Number.isInteger(votes)||votes<0)continue;
+    const key=id+'|'+cand+'|'+(p[ix['Choice Party']]||'');
+    acc.set(key,(acc.get(key)||0)+votes);
+  }
+  const rows=[...acc].map(([key,votes])=>{const [id,cand,party]=key.split('|');return {race_id:id,candidate:cand,party,votes,called:'',source:url,updated_at:at}});
+  if(!rows.reduce((a,r)=>a+r.votes,0))return {state:'empty',detail:'File is up, with 0 votes.',rows:[]};
+  return {state:'ok',detail:'North Carolina precincts',rows,priority:4};
+}
+async function loadWashington(url){
+  const res=await feedFetch(url);if(!res.ok)throw Error('HTTP '+res.status);
+  const text=await readMaybeGzip(res);
+  const at=httpDate(res.headers.get('last-modified'))||new Date().toISOString();
+  const parsed=parseCSV(text);
+  const acc=new Map();
+  for(const row of parsed){
+    const race=row.race||row.Race||'';
+    let id=null;
+    if(/^U\.S\. Senator$/i.test(race))id='S-WA';
+    else if(/^Governor$/i.test(race))id='G-WA';
+    else {const m=race.match(/Congressional District\s+(\d+)/i);if(m)id=`H-WA-${String(m[1]).padStart(2,'0')}`}
+    const cand=row.candidate||row.Candidate||'';
+    const votes=Number(String(row.votes||row.Votes||'').replaceAll(',',''));
+    if(!id||!cand||!Number.isInteger(votes)||votes<0)continue;
+    const key=id+'|'+cand+'|'+(row.party||row.Party||'');
+    acc.set(key,(acc.get(key)||0)+votes);
+  }
+  const rows=[...acc].map(([key,votes])=>{const [id,cand,party]=key.split('|');return {race_id:id,candidate:cand,party:party.trim(),votes,called:'',source:url,updated_at:at}});
+  if(!rows.length)return {state:'empty',detail:'No House, Senate, or governor rows in this file.',rows:[]};
+  if(!rows.reduce((a,r)=>a+r.votes,0))return {state:'empty',detail:'File is up, with 0 votes.',rows:[]};
+  return {state:'ok',detail:'Washington',rows,priority:5};
+}
+function clarityRaceId(state,contest){
+  const c=String(contest||'').replace(/\s*\(Vote For.*\)$/i,'').trim();
+  if(/ - (Rep|Dem|Lib|Dem\.)/i.test(c)||/Republican|Democratic/i.test(c))return null;
+  if(/^United States Senator|^US Senator/i.test(c))return 'S-'+state;
+  const m=c.match(/(?:Representative|Congressional District|US House)\D*(\d+)/i);
+  if(m&&/Representative|Congress|House/i.test(c))return `H-${state}-${String(m[1]).padStart(2,'0')}`;
+  if(/^Governor\b/i.test(c))return 'G-'+state;
+  return null;
+}
+function clarityRows(state,text,url,at){
+  const parsed=parseCSV(text);
+  const acc=new Map();
+  for(const row of parsed){
+    const contest=row['contest name']||row.contest||'';
+    const id=clarityRaceId(state,contest);if(!id)continue;
+    const cand=row['choice name']||row.choice||'';
+    const votes=Number(String(row['total votes']||row.votes||'').replaceAll(',',''));
+    if(!cand||!Number.isInteger(votes)||votes<0)continue;
+    const areas=Number(row['num Area total']||0),rpt=Number(row['num Area rptg']||0);
+    const key=id+'|'+cand+'|'+(row['party name']||'');
+    const prev=acc.get(key);
+    if(!prev)acc.set(key,{votes,statewide:areas&&areas===rpt});
+    else if(areas&&areas===rpt)acc.set(key,{votes:Math.max(prev.votes,votes),statewide:true});
+    else acc.set(key,{votes:prev.votes+votes,statewide:false});
+  }
+  const rows=[...acc].map(([key,v])=>{const [id,cand,party]=key.split('|');return {race_id:id,candidate:cand,party,votes:v.votes,called:'',source:url,updated_at:at}});
+  if(!rows.length)return {state:'empty',detail:'General file had no House, Senate, or governor rows.',rows:[]};
+  if(!rows.reduce((a,r)=>a+r.votes,0))return {state:'empty',detail:'File is up, with 0 votes.',rows:[]};
+  return {state:'ok',detail:state+' general',rows,priority:5};
+}
+async function loadClarity(state){
+  const listUrl=`https://results.enr.clarityelections.com/${state}/elections.json`;
+  const res=await feedFetch(listUrl);if(!res.ok)throw Error('HTTP '+res.status);
+  const list=JSON.parse(await readMaybeGzip(res));
+  const general=(Array.isArray(list)?list:[]).find(el=>/^11\/0?3\/2026$/.test(String(el.Date||'').split(' ')[0]));
+  if(!general)return {state:'empty',detail:'2026 general is not listed yet.',rows:[]};
+  const verRes=await feedFetch(`https://results.enr.clarityelections.com/${state}/${general.EID}/current_ver.txt`);
+  if(!verRes.ok)throw Error('HTTP '+verRes.status);
+  const ver=(await verRes.text()).trim();
+  if(!/^\d+$/.test(ver))throw Error('No version for the general');
+  const zipUrl=`https://results.enr.clarityelections.com/${state}/${general.EID}/${ver}/reports/summary.zip`;
+  const zipRes=await feedFetch(zipUrl);if(!zipRes.ok)throw Error('HTTP '+zipRes.status);
+  const text=await unzipText(await zipRes.arrayBuffer());
+  const at=httpDate(zipRes.headers.get('last-modified'))||new Date().toISOString();
+  return clarityRows(state,text,zipUrl,at);
+}
+async function loadClarityVer(url){
+  const res=await feedFetch(url);if(!res.ok)throw Error('HTTP '+res.status);
+  const ver=(await res.text()).trim();
+  return {state:'skip',detail:'Version '+ver+'. Primary check, not loaded into the general.',rows:[]};
+}
+async function runFeed(feed){
+  if(feed.mode==='note')return {state:'skip',detail:feed.detail,rows:[]};
+  if(feed.mode==='civic')return loadCivic(feed.url);
+  if(feed.mode==='civic-search')return loadCivicSearch(feed.url);
+  if(feed.mode==='openamerica')return loadOpenAmerica(feed.url);
+  if(feed.mode==='california')return loadCalifornia(feed.url,feed.raceId);
+  if(feed.mode==='ca-house')return loadCaHouse(feed.url);
+  if(feed.mode==='watch')return loadWatch(feed.url);
+  if(feed.mode==='florida')return loadFlorida(feed.url);
+  if(feed.mode==='minnesota')return loadMinnesota(feed.url);
+  if(feed.mode==='nc-json')return loadNcJson(feed.url);
+  if(feed.mode==='nc-zip')return loadNcZip(feed.url);
+  if(feed.mode==='washington')return loadWashington(feed.url);
+  if(feed.mode==='clarity')return loadClarity(feed.state);
+  if(feed.mode==='clarity-ver')return loadClarityVer(feed.url);
+  return {state:'skip',detail:'No loader for this address.',rows:[]};
+}
+function offerRows(bucket,part){
+  const rows=(part&&part.rows)||[];
+  if(!rows.length)return;
+  const groups={};
+  for(const row of rows){(groups[row.race_id]??=[]).push(row)}
+  const priority=part.priority||1;
+  for(const [id,list] of Object.entries(groups)){
+    if(!list.reduce((a,r)=>a+r.votes,0))continue;
+    const at=list.map(r=>r.updated_at).sort().pop();
+    const prev=bucket.get(id);
+    if(!prev||priority>prev.priority||(priority===prev.priority&&Date.parse(at)>=Date.parse(prev.at)))bucket.set(id,{id,at,priority,rows:list});
+  }
+}
+function summarizeFeeds(){
+  const n=feedReport.length;
+  const counts=feedReport.filter(x=>x.state==='ok').length;
+  const empty=feedReport.filter(x=>x.state==='empty').length;
+  const held=feedReport.filter(x=>x.state==='held'||x.state==='skip').length;
+  const bad=feedReport.filter(x=>x.state==='error').length;
+  feedSummary=`${n} feeds · ${counts} with counts · ${empty} empty · ${held} held · ${bad} not loaded`;
+}
+function paintFeedRows(){
+  const box=$('feedrows'),sum=$('feedsum');if(!box)return;
+  const rows=feedReport.length?feedReport:FEEDS.map(f=>({...f,state:'wait',detail:'Waiting for the first refresh'}));
+  if(sum)sum.textContent=feedSummary?`Result feeds · ${feedSummary}`:`Result feeds · ${FEEDS.length} addresses`;
+  box.innerHTML=rows.map(f=>{
+    const cls=f.state==='error'?'bad':(f.state==='held'||f.state==='skip'?'held':'');
+    return `<div class="feedrow"><b>${esc(f.name)}</b> · ${esc(f.coverage)} · <a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(hostOf(f.url))}</a><div class="${cls}">${esc(f.detail||f.state||'')}</div></div>`;
+  }).join('');
+}
+async function refreshSources(){
+  const ran=await pool(FEEDS,6,async feed=>{
+    try{
+      const part=await runFeed(feed);
+      return {...feed,state:part.state||'empty',detail:part.detail||'',rows:part.rows||[],priority:part.priority||1};
+    }catch(e){
+      return {...feed,state:'error',detail:feedFail(e),rows:[]};
+    }
+  });
+  const bucket=new Map();
+  for(const part of ran)offerRows(bucket,part);
+  const flat=[];
+  for(const item of bucket.values())flat.push(...item.rows);
+  feedReport=ran.map(({rows,priority,...rest})=>rest);
+  summarizeFeeds();
+  if(flat.length){
+    try{applyRecords(flat,'result feeds',{quiet:true})}
+    catch(e){feedSummary+=' · Counts were not applied: '+e.message}
+  }
+}
+
+async function refreshFile(manual){
   if(refreshBusy)return;
   refreshBusy=true;
   const btn=$('refresh');
   if(btn){btn.disabled=true;btn.textContent='Refreshing…'}
+  let fileKind=null;
   try{
-    const base=window.__resultsUrl||'results.json';
-    const r=await fetch(base+(base.includes('?')?'&':'?')+'ts='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
-    if(!r.ok)throw Error('HTTP '+r.status);
-    let d;try{d=await r.json()}catch{throw Error('results.json was not valid JSON')}
-    const kind=mergeDashboardFile(d);
+    try{
+      const base=window.__resultsUrl||'results.json';
+      const r=await fetch(base+(base.includes('?')?'&':'?')+'ts='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+      if(!r.ok)throw Error('HTTP '+r.status);
+      let d;try{d=await r.json()}catch{throw Error('results.json was not valid JSON')}
+      fileKind=mergeDashboardFile(d);
+      refreshError='';
+    }catch(e){
+      refreshError=e.message||'Refresh failed';
+    }
+    try{await refreshSources()}catch(e){feedSummary=(feedSummary?feedSummary+' · ':'')+(e.message||'Feed refresh failed')}
+    if(manual&&feed.url){try{await pull()}catch(e){}}
     lastRefreshAt=new Date().toISOString();
-    refreshError='';
-    if(kind!=='feed')render({keep:true});
+    if(fileKind!=='feed')render({keep:true});
     else paintRefreshLine();
-  }catch(e){
-    refreshError=e.message||'Refresh failed';
-    paintRefreshLine();
   }finally{
     refreshBusy=false;
     if(btn){btn.disabled=false;btn.textContent='Refresh'}
@@ -851,7 +1359,7 @@ function init(){
   $('feedgo').onclick=()=>{const u=safeUrl($('feedurl').value.trim());if(!u){toast('Enter an https:// URL');return}feed={url:u,interval:Number($('feedint').value)||300};saveLocal();$('modal').classList.remove('show');startFeed()};
   $('feedstop').onclick=()=>{clearInterval(tick);tick=null;feed={url:'',interval:300};saveLocal();$('modal').classList.remove('show');render();toast('Feed polling stopped')};
   $('clearlocal').onclick=()=>{local={results:{},calls:{},at:null,origin:''};saveLocal();$('modal').classList.remove('show');render();toast('Local imports cleared')};
-  $('refresh').onclick=()=>refreshFile();
+  $('refresh').onclick=()=>refreshFile(true);
   window.addEventListener('hashchange',()=>render());
   if(feed.url)startFeed();
   startJsonRefresh();
