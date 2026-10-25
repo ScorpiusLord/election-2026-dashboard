@@ -7,7 +7,76 @@
   "home": {
    "city": "Belton, MO",
    "county": "Cass",
-   "district": "H-MO-04"
+   "district": "H-MO-04",
+   "state_house": "SH-MO-56",
+   "senate_district_not_on_ballot": {
+    "district": "31",
+    "reason": "Belton and all of Cass County are in Missouri Senate District 31. That odd-numbered seat was elected in 2024 and is not on the 2026 ballot. The Cass County sample ballot does not include a state senate contest.",
+    "sources": [
+     {
+      "label": "Missouri Senate District 31 map (2022)",
+      "url": "https://www.senate.mo.gov/webPDFs/Maps/district_31.pdf"
+     },
+     {
+      "label": "Wikipedia, Missouri's 31st Senate district (geography and 2024 election)",
+      "url": "https://en.wikipedia.org/wiki/Missouri%27s_31st_Senate_district"
+     },
+     {
+      "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+      "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+     }
+    ]
+   },
+   "checked_not_on_belton_ballot": [
+    {
+     "office": "U.S. Senate",
+     "reason": "Missouri has no U.S. Senate election on November 3, 2026. The seat last elected in 2024 is not up, and the Cass County sample ballot has no U.S. Senate contest."
+    },
+    {
+     "office": "Governor",
+     "reason": "Missouri’s governor is not on the 2026 ballot. The Secretary of State’s certified candidate list for this general election starts with State Auditor, not Governor, and the sample ballot has no gubernatorial contest."
+    },
+    {
+     "office": "Lieutenant Governor, Attorney General, Secretary of State, and State Treasurer",
+     "reason": "These statewide executive offices are not on the Cass County sample ballot or in the 2026 offices certified alongside State Auditor."
+    },
+    {
+     "office": "State Senate District 31",
+     "reason": "Belton is in Senate District 31, last elected in 2024. Even-numbered Missouri Senate districts are the 2026 contests. No state senate race is on the sample ballot."
+    },
+    {
+     "office": "Missouri House District 55",
+     "reason": "On the Cass County composite sample ballot (William (Bill) Irwin, Jon Pennell) for other addresses. Not the Belton city district."
+    },
+    {
+     "office": "Missouri House District 62",
+     "reason": "On the Cass County composite sample ballot (Sherri Gallick, Liz Davenport). Census places with land in District 62 do not include Belton city. District 56 lists Belton city without a split mark."
+    },
+    {
+     "office": "City of Drexel sales-tax question",
+     "reason": "Printed on the county composite sample ballot for Drexel, not for Belton."
+    },
+    {
+     "office": "City of Lee's Summit solid-waste question",
+     "reason": "Printed on the county composite sample ballot for Lee's Summit, not for Belton."
+    },
+    {
+     "office": "City of Belton municipal offices or questions",
+     "reason": "No Belton city contest or question is printed on the November 3, 2026 Cass County sample ballot."
+    },
+    {
+     "office": "Sheriff, Assessor, and other county row offices not named above",
+     "reason": "Not printed on the November 3, 2026 Cass County sample ballot."
+    },
+    {
+     "office": "School board",
+     "reason": "No school-board contest is printed on the November 3, 2026 Cass County sample ballot."
+    },
+    {
+     "office": "Circuit judge retention beyond the two appellate questions",
+     "reason": "The sample ballot’s official judicial ballot lists only Missouri Supreme Court Judge Paul C. Wilson and Western District Court of Appeals Judge Lisa White Hardwick."
+    }
+   ]
   }
  },
  "scaffold": {
@@ -7661,10 +7730,16 @@
     {
      "label": "KCUR, 'Missouri's 4th Congressional District: What to know about the candidates' (Oct 6, 2026)",
      "url": "https://www.kcur.org/politics-elections-and-government/2026-10-06/missouri-4th-district-election-guide-alford-herrera"
+    },
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
     }
    ],
    "missouri_note": "Uses the 2022 district map (Missouri Supreme Court, Sept 2026; U.S. Supreme Court stay Sept 25, 2026). The Aug 4 primary used the 2025 map.",
-   "local_note": "Belton (Cass County) is in MO-4 under the 2022 map. Confirm your district at the SOS Voter Outreach Portal: https://voteroutreach.sos.mo.gov/"
+   "local_note": "Belton (Cass County) is in MO-4 under the 2022 map. Confirm your district at the SOS Voter Outreach Portal: https://voteroutreach.sos.mo.gov/",
+   "on_belton_ballot": true,
+   "belton_order": 10
   },
   {
    "id": "H-MO-05",
@@ -17064,8 +17139,14 @@
     {
      "label": "Missouri SOS, 2026 General Election Certified Candidates (PDF, cited by Wikipedia)",
      "url": "https://www.sos.mo.gov/CMSImages/ElectionCandidates/2026GeneralElectionCertifiedCandidates.pdf"
+    },
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
     }
-   ]
+   ],
+   "on_belton_ballot": true,
+   "belton_order": 20
   },
   {
    "id": "MO-PROPA",
@@ -17097,8 +17178,24 @@
     {
      "label": "Ballotpedia, Missouri 2026 ballot measures",
      "url": "https://ballotpedia.org/Missouri_2026_ballot_measures"
+    },
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    },
+    {
+     "label": "Fair ballot language for the November 3, 2026 general election, posted by the Atchison County election authority (Secretary of State fair-ballot text)",
+     "url": "https://acmoelections.org/fair-ballot-language/"
     }
-   ]
+   ],
+   "order": 74,
+   "proposed_by": "Proposed by referendum petition",
+   "ballot_title": "Do the people of the state of Missouri approve the act of the General Assembly entitled “House Bill No. 1 (2025 Second Extraordinary Session),” which repeals Missouri’s existing congressional plan, and replaces it with new congressional boundaries that keep more counties intact?\n\nState and local governmental entities estimate no costs or savings.",
+   "yes_means": "A “yes” vote will approve the act of the General Assembly entitled “House Bill No. 1 (2025 Extraordinary Session),” which redraws the congressional district boundaries.",
+   "no_means": "A “no” vote will leave in place the congressional district boundaries enacted in 2022.",
+   "tax_note": "If passed, this measure will have no impact on taxes.",
+   "on_belton_ballot": true,
+   "belton_order": 74
   },
   {
    "id": "MO-AM3",
@@ -17130,8 +17227,24 @@
     {
      "label": "Ballotpedia, Missouri 2026 ballot measures",
      "url": "https://ballotpedia.org/Missouri_2026_ballot_measures"
+    },
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    },
+    {
+     "label": "Fair ballot language for the November 3, 2026 general election, posted by the Atchison County election authority (Secretary of State fair-ballot text)",
+     "url": "https://acmoelections.org/fair-ballot-language/"
     }
-   ]
+   ],
+   "order": 70,
+   "proposed_by": "Proposed by the 103rd General Assembly (First Regular Session) HCS HJR 73",
+   "ballot_title": "Shall the Missouri Constitution be amended to:\n• Repeal the 2024 voter-approved Amendment providing reproductive healthcare rights, including abortion through fetal viability;\n• Allow abortions for rape and incest (under twelve-weeks’ gestation), emergencies, and fetal anomalies;\n• Allow legislation regulating abortion;\n• Ensure parental consent for minors’ abortions;\n• Prohibit gender transition procedures for minors?\n\nState governmental entities estimate no costs or savings. Greene County estimates it may experience an unknown increase in tax revenue. Other local governmental entities estimate no costs or savings.",
+   "yes_means": "A “yes” vote will repeal Article I, Section 36, of the Missouri Constitution approved by the voters in 2024 which provided reproductive healthcare rights, including abortion through fetal viability; continue to ensure women’s ability to access medical care for medical emergencies, ectopic pregnancies, and miscarriages; allow legislation to regulate abortion providers and facilities to ensure health and safety; require informed and voluntary consent for an abortion, including parental or judicial consent for minors; allow restriction of abortions to cases of medical emergency, rape and incest under twelve weeks gestation, and fetal anomalies; prohibit public funding of abortions except in limited circumstances; and prohibit gender transition procedures for minors including gender transition surgeries, cross-sex hormones or puberty-blocking drugs, with exceptions for specific medical conditions.",
+   "no_means": "A “no” vote will leave Article I, Section 36, of the Missouri Constitution approved by voters in 2024 in place; will not limit abortion to cases of medical emergency, rape and incest under twelve weeks gestation, and fetal anomalies, but leave access to abortion available through fetal viability; will not prohibit gender transition procedures for minors.",
+   "tax_note": "If passed, this measure will not increase or decrease taxes.",
+   "on_belton_ballot": true,
+   "belton_order": 70
   },
   {
    "id": "MO-AM6",
@@ -17163,8 +17276,24 @@
     {
      "label": "Ballotpedia, Missouri 2026 ballot measures",
      "url": "https://ballotpedia.org/Missouri_2026_ballot_measures"
+    },
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    },
+    {
+     "label": "Fair ballot language for the November 3, 2026 general election, posted by the Atchison County election authority (Secretary of State fair-ballot text)",
+     "url": "https://acmoelections.org/fair-ballot-language/"
     }
-   ]
+   ],
+   "order": 71,
+   "proposed_by": "Proposed by initiative petition",
+   "ballot_title": "Shall the Missouri Constitution be amended to:\n• expand the initiative and referendum petition process by making it a fundamental right;\n• allow courts to revise ballot summaries through lawsuits;\n• prohibit the legislature from weakening initiative or referendum powers;\n• prohibit the legislature from changing or repealing laws enacted through the initiative process, or passing laws similar to those rejected by referendum, without approval from at least 80% of both chambers; and\n• preserve existing majority vote and signature requirements for initiative and referendum petitions?\n\nState and local governmental entities estimate no costs or savings.",
+   "yes_means": "A “yes” vote will prohibit the people’s elected representatives from directly amending or changing any law enacted through the initiative process; require that any modifications to laws enacted through the initiative process be referred to the people by a vote of at least 80% of each chamber of the General Assembly; restrict the legislature from passing laws that limit the ability to pursue initiatives and referenda; maintain the current signature requirements of five percent of the individual legal voters in each of two-thirds of Missouri’s congressional districts for proposing a law; maintain the current signature requirement of eight percent of individual legal voters in each of two-thirds of Missouri’s congressional districts for proposing a constitutional amendment; and maintain the current requirement that a simple statewide majority of votes cast on a measure by individual legal voters is sufficient to enact any law or constitutional amendment.",
+   "no_means": "A “no” vote will not change the current constitutional provisions, which already give citizens the right to propose initiatives and referenda.",
+   "tax_note": "If passed, this measure will not increase or decrease taxes.",
+   "on_belton_ballot": true,
+   "belton_order": 71
   },
   {
    "id": "MO-AM7",
@@ -17196,8 +17325,24 @@
     {
      "label": "Ballotpedia, Missouri 2026 ballot measures",
      "url": "https://ballotpedia.org/Missouri_2026_ballot_measures"
+    },
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    },
+    {
+     "label": "Fair ballot language for the November 3, 2026 general election, posted by the Atchison County election authority (Secretary of State fair-ballot text)",
+     "url": "https://acmoelections.org/fair-ballot-language/"
     }
-   ]
+   ],
+   "order": 72,
+   "proposed_by": "Proposed by the 103rd General Assembly (Second Regular Session) SS SCS SJR 95",
+   "ballot_title": "Shall the Missouri Constitution be amended to establish a permanent public endowment fund to support state government instead of taxing Missouri residents, prohibit the General Assembly from appropriating or diverting the fund, and eliminate state-imposed taxes once the fund generates sufficient revenue to replace them?\n\nState and local governmental entities estimate no costs or savings.",
+   "yes_means": "A “yes” vote will amend the Missouri Constitution to establish the “Show-Me Prosperity Fund,” a permanent public endowment fund to support state government with the goal of eliminating state-imposed taxes without impairing the real value of the fund’s principal; prohibit the General Assembly from appropriating or diverting monies from the fund until notification is given by the State Treasurer that the net investment earnings of the fund are sufficient to eliminate state-imposed taxes; cap the total amount of moneys that may be appropriated from the fund in a fiscal year to three percent of the average market value of the fund over the preceding five fiscal years; and prohibit the General Assembly from enacting the eliminated state-imposed taxes, provided, however, that in the event the fund is unable to meet its obligations due to insolvency, revenue shortfall, or program failure, the General Assembly shall retain full authority to appropriate funds from any lawful source and to enact legislation establishing or increasing taxes or other revenues as necessary.",
+   "no_means": "A “no” vote will not amend the Missouri Constitution to establish a permanent public endowment fund to support state government with the goal of eliminating state-imposed taxes.",
+   "tax_note": "If passed, this measure will have no immediate impact on taxes but could lead to the elimination of state-imposed taxes if the net investment earnings of the fund become sufficient to support that outcome.",
+   "on_belton_ballot": true,
+   "belton_order": 72
   },
   {
    "id": "MO-AM8",
@@ -17229,6 +17374,435 @@
     {
      "label": "Ballotpedia, Missouri 2026 ballot measures",
      "url": "https://ballotpedia.org/Missouri_2026_ballot_measures"
+    },
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    },
+    {
+     "label": "Fair ballot language for the November 3, 2026 general election, posted by the Atchison County election authority (Secretary of State fair-ballot text)",
+     "url": "https://acmoelections.org/fair-ballot-language/"
+    }
+   ],
+   "order": 73,
+   "proposed_by": "Proposed by the 103rd General Assembly (Second Regular Session) CCS HCS SS SJR 87",
+   "ballot_title": "Shall the Missouri Constitution be amended to support law enforcement by preserving the right of citizens to elect a county sheriff, prohibiting the removal of a county sheriff except by a writ of quo warranto, and recognizing the office of sheriff as part of the administration of justice?\n\nState and local governmental entities estimate no costs or savings.",
+   "yes_means": "A “yes” vote will amend the Missouri Constitution to require counties to: elect a sheriff every four years, which is currently required by statute; place in the Constitution provisions regarding sheriffs’ duties that are currently provided by statute; and provide that an elected sheriff may be removed from office only through a writ of quo warranto initiated by the Attorney General.",
+   "no_means": "A “no” vote will not amend the Missouri Constitution. Current Missouri statutes providing for the election of county sheriffs to four-year terms and governing their duties and removal will remain in effect unless changed by law.",
+   "tax_note": "If passed, this measure will not increase or decrease taxes.",
+   "on_belton_ballot": true,
+   "belton_order": 73
+  },
+  {
+   "id": "SH-MO-56",
+   "office": "State House",
+   "state": "MO",
+   "district": "56",
+   "name": "Missouri · House District 56",
+   "incumbent": "Michael Davis",
+   "incumbent_party": "R",
+   "other_incumbents": [],
+   "status_note": "Incumbent holds the seat and is not on the general-election ballot",
+   "on_belton_ballot": true,
+   "belton_order": 30,
+   "local_note": "Census places with land in this district list Belton city (not marked as split) and part of Raymore. The official 2022 House District 56 map covers this portion of Cass County.",
+   "candidates": [
+    {
+     "name": "Steve Baker",
+     "party": "Republican",
+     "incumbent": false
+    },
+    {
+     "name": "Staci Czar",
+     "party": "Democratic",
+     "incumbent": false
+    }
+   ],
+   "sources": [
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    },
+    {
+     "label": "Missouri Secretary of State, 2026 General Election certified candidates (PDF)",
+     "url": "https://www.sos.mo.gov/CMSImages/ElectionCandidates/2026GeneralElectionCertifiedCandidates.pdf"
+    },
+    {
+     "label": "Ballotpedia, Missouri House of Representatives elections, 2026",
+     "url": "https://ballotpedia.org/Missouri_House_of_Representatives_elections,_2026"
+    },
+    {
+     "label": "Missouri House of Representatives, Rep. Michael Davis, District 56",
+     "url": "https://house.mo.gov/MemberDetails.aspx?district=056&year=2026"
+    },
+    {
+     "label": "MyRepTracker, Missouri House District 56 places (Belton city; Raymore partly)",
+     "url": "https://www.myreptracker.com/missouri/elections/2026/state/house/56"
+    },
+    {
+     "label": "Missouri House District 56 map (2022 final House plan)",
+     "url": "https://info.mo.gov/OA/bp/redistricting/pdf/House%20District%20056.pdf"
+    },
+    {
+     "label": "Missouri House district map, Cass County, District 56",
+     "url": "https://house.mo.gov/districtmap.aspx?counties=Cass&district=056"
+    }
+   ]
+  },
+  {
+   "id": "CC-ACJ-3",
+   "office": "Judicial",
+   "state": "MO",
+   "district": "",
+   "name": "Cass County · Associate Circuit Judge, Division 3",
+   "incumbent": null,
+   "incumbent_party": null,
+   "other_incumbents": [],
+   "status_note": "Printed on the Cass County November 3, 2026 sample ballot. A write-in line is also printed; no named write-in candidate is listed in that source.",
+   "on_belton_ballot": true,
+   "belton_order": 40,
+   "candidates": [
+    {
+     "name": "James G. Eftink",
+     "party": "Republican",
+     "incumbent": false
+    }
+   ],
+   "sources": [
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    }
+   ]
+  },
+  {
+   "id": "CC-ACJ-4",
+   "office": "Judicial",
+   "state": "MO",
+   "district": "",
+   "name": "Cass County · Associate Circuit Judge, Division 4",
+   "incumbent": null,
+   "incumbent_party": null,
+   "other_incumbents": [],
+   "status_note": "Printed on the Cass County November 3, 2026 sample ballot. A write-in line is also printed; no named write-in candidate is listed in that source.",
+   "on_belton_ballot": true,
+   "belton_order": 41,
+   "candidates": [
+    {
+     "name": "Derek Spencer",
+     "party": "Republican",
+     "incumbent": false
+    }
+   ],
+   "sources": [
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    }
+   ]
+  },
+  {
+   "id": "CC-ACJ-5",
+   "office": "Judicial",
+   "state": "MO",
+   "district": "",
+   "name": "Cass County · Associate Circuit Judge, Division 5",
+   "incumbent": null,
+   "incumbent_party": null,
+   "other_incumbents": [],
+   "status_note": "Printed on the Cass County November 3, 2026 sample ballot. A write-in line is also printed; no named write-in candidate is listed in that source.",
+   "on_belton_ballot": true,
+   "belton_order": 42,
+   "candidates": [
+    {
+     "name": "Tiffany Tschudi",
+     "party": "Republican",
+     "incumbent": false
+    }
+   ],
+   "sources": [
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    }
+   ]
+  },
+  {
+   "id": "CC-ACJ-6",
+   "office": "Judicial",
+   "state": "MO",
+   "district": "",
+   "name": "Cass County · Associate Circuit Judge, Division 6",
+   "incumbent": null,
+   "incumbent_party": null,
+   "other_incumbents": [],
+   "status_note": "Printed on the Cass County November 3, 2026 sample ballot. A write-in line is also printed; no named write-in candidate is listed in that source.",
+   "on_belton_ballot": true,
+   "belton_order": 43,
+   "candidates": [
+    {
+     "name": "Jason M. Howell",
+     "party": "Republican",
+     "incumbent": false
+    }
+   ],
+   "sources": [
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    }
+   ]
+  },
+  {
+   "id": "CC-PRES",
+   "office": "County",
+   "state": "MO",
+   "district": "",
+   "name": "Cass County · Presiding Commissioner",
+   "incumbent": null,
+   "incumbent_party": null,
+   "other_incumbents": [],
+   "status_note": "Printed on the Cass County November 3, 2026 sample ballot. A write-in line is also printed; no named write-in candidate is listed in that source.",
+   "on_belton_ballot": true,
+   "belton_order": 50,
+   "candidates": [
+    {
+     "name": "Bob Huston",
+     "party": "Republican",
+     "incumbent": false
+    }
+   ],
+   "sources": [
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    }
+   ]
+  },
+  {
+   "id": "CC-CLERK",
+   "office": "County",
+   "state": "MO",
+   "district": "",
+   "name": "Cass County · County Clerk",
+   "incumbent": null,
+   "incumbent_party": null,
+   "other_incumbents": [],
+   "status_note": "Printed on the Cass County November 3, 2026 sample ballot. A write-in line is also printed; no named write-in candidate is listed in that source.",
+   "on_belton_ballot": true,
+   "belton_order": 51,
+   "candidates": [
+    {
+     "name": "Kathy Lambertz",
+     "party": "Republican",
+     "incumbent": false
+    }
+   ],
+   "sources": [
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    }
+   ]
+  },
+  {
+   "id": "CC-CCLK",
+   "office": "County",
+   "state": "MO",
+   "district": "",
+   "name": "Cass County · Circuit Clerk",
+   "incumbent": null,
+   "incumbent_party": null,
+   "other_incumbents": [],
+   "status_note": "Printed on the Cass County November 3, 2026 sample ballot. A write-in line is also printed; no named write-in candidate is listed in that source.",
+   "on_belton_ballot": true,
+   "belton_order": 52,
+   "candidates": [
+    {
+     "name": "Sandy Massa",
+     "party": "Republican",
+     "incumbent": false
+    }
+   ],
+   "sources": [
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    }
+   ]
+  },
+  {
+   "id": "CC-REC",
+   "office": "County",
+   "state": "MO",
+   "district": "",
+   "name": "Cass County · Recorder of Deeds",
+   "incumbent": null,
+   "incumbent_party": null,
+   "other_incumbents": [],
+   "status_note": "Printed on the Cass County November 3, 2026 sample ballot, with a write-in line. No named write-in candidate is listed in that source.",
+   "on_belton_ballot": true,
+   "belton_order": 53,
+   "candidates": [
+    {
+     "name": "Mike Medsker",
+     "party": "Republican",
+     "incumbent": false
+    },
+    {
+     "name": "Art Ruiz",
+     "party": "Democratic",
+     "incumbent": false
+    }
+   ],
+   "sources": [
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    }
+   ]
+  },
+  {
+   "id": "CC-PA",
+   "office": "County",
+   "state": "MO",
+   "district": "",
+   "name": "Cass County · Prosecuting Attorney",
+   "incumbent": null,
+   "incumbent_party": null,
+   "other_incumbents": [],
+   "status_note": "Printed on the Cass County November 3, 2026 sample ballot. A write-in line is also printed; no named write-in candidate is listed in that source.",
+   "on_belton_ballot": true,
+   "belton_order": 54,
+   "candidates": [
+    {
+     "name": "Ben Butler",
+     "party": "Republican",
+     "incumbent": false
+    }
+   ],
+   "sources": [
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    }
+   ]
+  },
+  {
+   "id": "CC-COLL",
+   "office": "County",
+   "state": "MO",
+   "district": "",
+   "name": "Cass County · Collector of Revenue",
+   "incumbent": null,
+   "incumbent_party": null,
+   "other_incumbents": [],
+   "status_note": "Printed on the Cass County November 3, 2026 sample ballot. A write-in line is also printed; no named write-in candidate is listed in that source.",
+   "on_belton_ballot": true,
+   "belton_order": 55,
+   "candidates": [
+    {
+     "name": "Chris Molendorp",
+     "party": "Republican",
+     "incumbent": false
+    }
+   ],
+   "sources": [
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    }
+   ]
+  },
+  {
+   "id": "CC-AUD",
+   "office": "County",
+   "state": "MO",
+   "district": "",
+   "name": "Cass County · County Auditor",
+   "incumbent": null,
+   "incumbent_party": null,
+   "other_incumbents": [],
+   "status_note": "Printed on the Cass County November 3, 2026 sample ballot. A write-in line is also printed; no named write-in candidate is listed in that source.",
+   "on_belton_ballot": true,
+   "belton_order": 56,
+   "candidates": [
+    {
+     "name": "Jack Bondon",
+     "party": "Republican",
+     "incumbent": false
+    }
+   ],
+   "sources": [
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    }
+   ]
+  },
+  {
+   "id": "J-SC-WILSON",
+   "office": "Judicial",
+   "state": "MO",
+   "district": "",
+   "kind": "retention",
+   "name": "Missouri Supreme Court · Retain Paul C. Wilson",
+   "description": "Shall Judge PAUL C. WILSON of the Missouri Supreme Court be retained in office?",
+   "incumbent": null,
+   "incumbent_party": null,
+   "other_incumbents": [],
+   "status_note": "Official judicial ballot: submitting to the voters whether the judge, whose term expires December 31, 2026, shall be retained in office for a new term.",
+   "on_belton_ballot": true,
+   "belton_order": 60,
+   "candidates": [
+    {
+     "name": "Yes",
+     "party": "",
+     "incumbent": false
+    },
+    {
+     "name": "No",
+     "party": "",
+     "incumbent": false
+    }
+   ],
+   "sources": [
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
+    }
+   ]
+  },
+  {
+   "id": "J-WD-HARDWICK",
+   "office": "Judicial",
+   "state": "MO",
+   "district": "",
+   "kind": "retention",
+   "name": "Missouri Court of Appeals, Western District · Retain Lisa White Hardwick",
+   "description": "Shall Judge LISA WHITE HARDWICK of the Western District Court of Appeals be retained in office?",
+   "incumbent": null,
+   "incumbent_party": null,
+   "other_incumbents": [],
+   "status_note": "Official judicial ballot: submitting to the voters whether the judge, whose term expires December 31, 2026, shall be retained in office for a new term.",
+   "on_belton_ballot": true,
+   "belton_order": 61,
+   "candidates": [
+    {
+     "name": "Yes",
+     "party": "",
+     "incumbent": false
+    },
+    {
+     "name": "No",
+     "party": "",
+     "incumbent": false
+    }
+   ],
+   "sources": [
+    {
+     "label": "Cass County Clerk, November 3, 2026 sample ballot (PDF)",
+     "url": "https://www.casscounty.com/DocumentCenter/View/4496/November-2026-Sample-Ballotpdf"
     }
    ]
   }
